@@ -16,6 +16,10 @@ import { paintCachedTheme } from "./lib/appearance";
 
 paintCachedTheme();
 
+/* Start fetching the 3D tree right away (it's on every screen) so the intro
+ * doesn't wait on it. */
+void import("./components/tree/treeScene").catch(() => {});
+
 /* Ask the browser not to evict IndexedDB under storage pressure. */
 if (navigator.storage?.persist) void navigator.storage.persist();
 

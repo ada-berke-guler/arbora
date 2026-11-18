@@ -71,6 +71,8 @@ export default function Tree({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<TreeScene | null>(null);
   const [ready, setReady] = useState(false);
+  /* true once we know the 3D scene won't come (no WebGL, chunk failed). */
+  const [fallback, setFallback] = useState(false);
   const [svgP, setSvgP] = useState(autoPlaySec ? 0 : progress);
   const doneRef = useRef(onAutoPlayDone);
   doneRef.current = onAutoPlayDone;
@@ -84,6 +86,7 @@ export default function Tree({
       const mod = await import("./treeScene").catch(() => null);
       if (!mod || disposed || !canvasRef.current || !wrapRef.current || !mod.webglAvailable()) {
         if (disposed) return;
+        setFallback(true);
         if (autoPlaySec) {
           setSvgP(1);
           window.setTimeout(() => doneRef.current?.(), reduced ? 600 : autoPlaySec * 1000);
@@ -99,7 +102,12 @@ export default function Tree({
           maxDpr,
         });
       } catch {
-        return; // context creation can still fail (GPU blocklist) — stay on the SVG
+        setFallback(true); // context creation can still fail (GPU blocklist) — use the SVG
+        if (autoPlaySec) {
+          setSvgP(1);
+          window.setTimeout(() => doneRef.current?.(), reduced ? 600 : autoPlaySec * 1000);
+        }
+        return;
       }
       sceneRef.current = scene;
       const fit = () => {
@@ -153,7 +161,9 @@ export default function Tree({
       aria-label={label}
     >
       <canvas ref={canvasRef} className="tree-canvas" style={{ opacity: ready ? 1 : 0 }} aria-hidden />
-      {!ready && <TreeSvg progress={svgP} animate={!!autoPlaySec} />}
+      {/* The intro grows from a seed in 3D, so while that chunk loads show
+          nothing — the 2D placeholder would flash a sprout first. */}
+      {!ready && (fallback || !autoPlaySec) && <TreeSvg progress={svgP} animate={!!autoPlaySec} />}
     </div>
   );
 }
