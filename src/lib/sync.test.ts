@@ -95,4 +95,30 @@ describe("account sync against the real server", () => {
     await deleteAccount(phone);
     await expect(connect(fresh(), SERVER, USER, "uzun-bir-parola", "login")).rejects.toThrow("not-found");
   }, 60_000);
+
+  it("skips the upload when nothing changed on either side", async () => {
+    const d = fresh();
+    const user = `${USER}-quiet`;
+    await addJournalEntry(d, "2026-11-06T08:00", "bir");
+    await connect(d, SERVER, user, "uzun-bir-parola", "create");
+    const real = globalThis.fetch;
+    let puts = 0;
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT") puts++;
+      return real(input, init);
+    }) as typeof fetch;
+    try {
+      await syncNow(d);
+      await syncNow(d);
+      expect(puts).toBe(0);
+      await addJournalEntry(d, "2026-11-07T08:00", "iki");
+      await syncNow(d);
+      expect(puts).toBe(1);
+      await syncNow(d);
+      expect(puts).toBe(1);
+    } finally {
+      globalThis.fetch = real;
+      await deleteAccount(d);
+    }
+  }, 60_000);
 });

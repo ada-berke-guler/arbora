@@ -28,7 +28,7 @@ import { join } from "node:path";
 
 const PORT = Number(process.env.PORT || 8787);
 const DATA_DIR = process.env.DATA_DIR || join(process.cwd(), "server", "data");
-const MAX_BYTES = Number(process.env.MAX_BYTES || 60 * 1024 * 1024);
+const MAX_BYTES = Number(process.env.MAX_BYTES || 20 * 1024 * 1024); // = MAX_VAULT_BYTES in src/lib/sync.ts
 const ID_RE = /^\/vault\/([0-9a-f]{64})$/;
 const TOKEN_RE = /^Bearer ([0-9a-f]{64})$/;
 

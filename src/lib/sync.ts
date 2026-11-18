@@ -17,6 +17,22 @@ export const DEFAULT_SYNC_SERVER = ((import.meta.env.VITE_SYNC_SERVER as string 
 const SESSION = "sync.session";
 const SERVER = "sync.server";
 const LAST = "sync.lastAt";
+/* What we last uploaded: lets a sync skip the upload (an R2 write) when
+ * neither side changed — most syncs (on open, every 5 min) are no-ops. */
+const LAST_HASH = "sync.lastHash";
+const LAST_ETAG = "sync.lastEtag";
+
+/** Must match the server's limit (server/cloudflare/src/worker.js). */
+export const MAX_VAULT_BYTES = 20 * 1024 * 1024;
+
+const bare = (t: string | null | undefined) => (t ?? "").replace(/^W\//, "").replace(/"/g, "");
+
+/** Fingerprint of the data itself, ignoring timestamps that change on every export. */
+async function fingerprint(b: Awaited<ReturnType<typeof exportBackup>>): Promise<string> {
+  const data = { ...b.data, settings: (b.data.settings as { key: string }[]).filter((r) => r.key !== "lastBackupAt") };
+  const dig = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(data)));
+  return Array.from(new Uint8Array(dig), (x) => x.toString(16).padStart(2, "0")).join("");
+}
 
 export type SyncState = { phase: "off" | "idle" | "syncing" | "error"; lastAt: string | null; error: string | null; username: string | null };
 
@@ -52,12 +68,24 @@ async function syncOnce(d: ArboraDB, server: string, session: Session): Promise<
     applying = true;
     try {
       if (remote) await mergeBackup(d, JSON.parse(await openWith(remote.sealed, acc.encKey)));
-      const sealed = await sealWith(JSON.stringify(await exportBackup(d)), acc.encKey);
-      try {
-        await pushVault(server, acc, sealed, remote ? remote.etag ?? undefined : null);
-      } catch (e) {
-        if (e instanceof Error && e.message === "conflict") continue;
-        throw e;
+      const hash = await fingerprint(await exportBackup(d, { stamp: false }));
+      const unchanged =
+        remote !== null &&
+        hash === (await getSetting<string>(d, LAST_HASH)) &&
+        bare(remote.etag) === bare(await getSetting<string>(d, LAST_ETAG));
+      if (!unchanged) {
+        const plain = JSON.stringify(await exportBackup(d));
+        const sealed = await sealWith(plain, acc.encKey);
+        if (JSON.stringify(sealed).length > MAX_VAULT_BYTES) throw new Error("too-large");
+        let etag: string | null;
+        try {
+          etag = await pushVault(server, acc, sealed, remote ? remote.etag ?? undefined : null);
+        } catch (e) {
+          if (e instanceof Error && e.message === "conflict") continue;
+          throw e;
+        }
+        await putSetting(d, LAST_HASH, hash);
+        await putSetting(d, LAST_ETAG, etag ?? "");
       }
       const at = new Date().toISOString();
       await putSetting(d, LAST, at);
@@ -119,7 +147,7 @@ export async function connect(d: ArboraDB, server: string, username: string, pas
 
 /** Forget the account on this device. Local data stays. */
 export async function signOut(d: ArboraDB): Promise<void> {
-  await d.settings.bulkDelete([SESSION, LAST]);
+  await d.settings.bulkDelete([SESSION, LAST, LAST_HASH, LAST_ETAG]);
   set({ phase: "off", username: null, lastAt: null, error: null });
 }
 

@@ -160,6 +160,8 @@ export async function pushVault(server: string, acc: Account, sealed: Sealed, et
     referrerPolicy: "no-referrer",
   });
   if (res.status === 412) throw new Error("conflict");
+  if (res.status === 413) throw new Error("too-large");
+  if (res.status === 429) throw new Error("rate-limited");
   if (res.status === 401 || res.status === 403) throw new Error("unauthorized");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.headers.get("ETag");
@@ -174,6 +176,7 @@ export async function pullVault(server: string, acc: Account): Promise<{ sealed:
     cache: "no-store",
   });
   if (res.status === 404) return null;
+  if (res.status === 429) throw new Error("rate-limited");
   if (res.status === 401 || res.status === 403) throw new Error("unauthorized");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return { sealed: (await res.json()) as Sealed, etag: res.headers.get("ETag") };

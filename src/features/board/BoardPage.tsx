@@ -24,6 +24,7 @@ import Modal from "../../components/Modal";
 import Icon from "../../components/Icons";
 import { ColorPicker } from "../../components/Pickers";
 import { exportBoardPng } from "./exportBoard";
+import { shrinkImage } from "./shrinkImage";
 import "./board.css";
 
 const NOTE_COLORS = ["#F3E3A8", "#F6C6C0", "#C9E4C5", "#BFD7F2", "#E2CCF0", "#FFFFFF", "#1C1B18", "#C9A96E"];
@@ -219,13 +220,13 @@ function BoardEditor({ board, onSettings }: { board: Board; onSettings: () => vo
     let n = 0;
     for (const f of Array.from(files)) {
       if (!f.type.startsWith("image/")) continue;
-      const data = await f.arrayBuffer();
-      const dims = await probe(data, f.type).catch(() => ({ w: 4, h: 3 }));
+      const { data, mime } = await shrinkImage(await f.arrayBuffer(), f.type);
+      const dims = await probe(data, mime).catch(() => ({ w: 4, h: 3 }));
       const target = Math.min(board.width, board.height) * 0.45;
       const k = target / Math.max(dims.w, dims.h);
       const w = Math.round(dims.w * k);
       const h = Math.round(dims.h * k);
-      await addImageItem(db, board.id, { data, mime: f.type }, {
+      await addImageItem(db, board.id, { data, mime }, {
         x: Math.round(board.width / 2 - w / 2 + n * fs),
         y: Math.round(board.height / 2 - h / 2 + n * fs),
         w,

@@ -11,11 +11,17 @@
  * object's metadata, set by the first upload). Only ciphertext is accepted.
  * No logs (observability is off in wrangler.toml), no IPs stored, no cookies,
  * no accounts or emails — so no password reset either.
+ *
+ * Abuse limits (Cloudflare Rate Limiting bindings, per IP, 60 s windows —
+ * counters are ephemeral and never stored by us):
+ *   REQ_LIMIT    all requests            → 429
+ *   CREATE_LIMIT new vaults              → 429 (stops junk-vault flooding)
+ *   MISS_LIMIT   reads of unknown vaults → 429 (slows password guessing)
  */
 
 const ID_RE = /^\/vault\/([0-9a-f]{64})$/;
 const TOKEN_RE = /^Bearer ([0-9a-f]{64})$/;
-const MAX_BYTES = 60 * 1024 * 1024;
+const MAX_BYTES = 20 * 1024 * 1024; // keep in sync with MAX_VAULT_BYTES in src/lib/sync.ts
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -65,9 +71,20 @@ function looksSealed(bytes) {
  * app may echo either form back — compare the bare tag. */
 const bareTag = (t) => (t || "").replace(/^W\//, "").replace(/"/g, "");
 
+async function allowed(limiter, ip) {
+  if (!limiter) return true; // binding missing (e.g. older wrangler): fail open
+  try {
+    return (await limiter.limit({ key: ip })).success;
+  } catch {
+    return true;
+  }
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+    const ip = req.headers.get("CF-Connecting-IP") || "local";
+    if (!(await allowed(env.REQ_LIMIT, ip))) return err(429, "slow down");
     const m = ID_RE.exec(new URL(req.url).pathname);
     if (!m) return err(404, "not found");
     const key = `vault/${m[1]}`;
@@ -81,7 +98,7 @@ export default {
     if (head && !sameHex(head.customMetadata?.auth, given)) return err(403, "forbidden");
 
     if (req.method === "GET") {
-      if (!head) return err(404, "not found");
+      if (!head) return (await allowed(env.MISS_LIMIT, ip)) ? err(404, "not found") : err(429, "slow down");
       const obj = await env.VAULTS.get(key);
       if (!obj) return err(404, "not found");
       return send(200, obj.body, { ETag: obj.httpEtag });
@@ -99,6 +116,7 @@ export default {
       const bytes = new Uint8Array(await req.arrayBuffer());
       if (bytes.length > MAX_BYTES) return err(413, "too large");
       if (!looksSealed(bytes)) return err(400, "expected encrypted vault");
+      if (!head && !(await allowed(env.CREATE_LIMIT, ip))) return err(429, "slow down");
 
       const ifMatch = req.headers.get("If-Match");
       if (req.headers.get("If-None-Match") === "*" && head) return err(412, "exists");

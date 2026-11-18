@@ -10,6 +10,8 @@ export function syncErrorText(t: ReturnType<typeof useI18n>["t"], m: string): st
   if (m === "not-found") return t("sync.notFound");
   if (m === "exists") return t("sync.exists");
   if (m === "conflict") return t("sync.conflict");
+  if (m === "too-large") return t("sync.tooLarge");
+  if (m === "rate-limited") return t("sync.rateLimited");
   return t("sync.failed", { msg: m });
 }
 

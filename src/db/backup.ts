@@ -42,8 +42,8 @@ export function isDeviceOnlySetting(key: string): boolean {
   return key.startsWith("sync.");
 }
 
-export async function exportBackup(d: ArboraDB): Promise<BackupFile> {
-  await putSetting(d, "lastBackupAt", nowIso()); // stamped first so it's inside the snapshot
+export async function exportBackup(d: ArboraDB, opts: { stamp?: boolean } = {}): Promise<BackupFile> {
+  if (opts.stamp !== false) await putSetting(d, "lastBackupAt", nowIso()); // stamped first so it's inside the snapshot
   const data = {} as BackupFile["data"];
   for (const t of TABLES) {
     const rows = await d.table(t).toArray();
