@@ -11,7 +11,7 @@
 
 Başı ve sonu belli bir yolculuk boyunca alışkanlıklarını, gün planını, anlarını,
 günlüğünü, uykunu, ruh halini, vision board'unu ve kim olduğunu takip eden,
-**hiçbir kullanıcı verisi toplamayan** kişisel bir web uygulaması (PWA).
+**kullanıcı verisini toplamayan ve göremeyen** kişisel bir web uygulaması (PWA).
 
 ### Özellikler
 
@@ -28,42 +28,14 @@ günlüğünü, uykunu, ruh halini, vision board'unu ve kim olduğunu takip eden
 | **Kimlik** | "Ben … biriyim" cümleleri |
 | **Temalar** | 10 hazır tema + **60-30-10 tema oluşturucu**, kontrast raporu, genel ya da **bölüm bölüm** uygulama |
 | **Yedek** | JSON dışa/içe aktarma (eski Arbora yedekleri dahil) |
-| **Şifreli eşitleme** | İsteğe bağlı; veri cihazda AES-256-GCM ile şifrelenir, sunucu okuyamaz |
+| **Hesap & eşitleme** | İsteğe bağlı; kullanıcı adı + parolayla cihazlar arası otomatik eşitleme. Veri cihazda AES-256-GCM ile şifrelenir, sunucu okuyamaz |
 | **Erişilebilirlik** | Türkçe/İngilizce, klavye desteği, ekran okuyucu etiketleri, hareket azaltma, mobil alt menü |
 
 ### Gizlilik
 
-- Analitik, çerez, takip veya reklam yok. Yazı tipleri dahil her şey uygulamanın içinde; çalışırken hiçbir üçüncü taraf sunucuya istek atılmaz.
-- Veriler yalnızca tarayıcının IndexedDB veritabanında durur.
+- Analitik, çerez, takip veya reklam yok. Yazı tipleri dahil her şey uygulamanın içinde.
+- Veriler cihazdaki tarayıcı veritabanında (IndexedDB) durur. Eşitleme kapalıyken hiçbir sunucuya istek atılmaz.
 - Eşitleme açılırsa kullanıcı adı + paroladan cihazda anahtar türetilir; sunucu yalnızca okuyamadığı şifreli bir dosya saklar. Şifre sıfırlama yoktur. Ayrıntılar: uygulamadaki Gizlilik ve KVKK sayfası.
-
-### Çalıştırma
-
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run test         # testler
-npm run build        # üretim derlemesi → dist/
-npm run sync-server  # (isteğe bağlı) şifreli kasa sunucusu, :8787
-```
-
-**Hesap / eşitleme sunucusu (önerilen: Cloudflare Workers + R2, ücretsiz):**
-
-```bash
-cd server/cloudflare
-npm install
-npx wrangler login     # tarayıcıda Cloudflare hesabınla giriş
-npm run setup          # R2 kovasını oluşturur (bir kez)
-npm run deploy         # → https://arbora-vault.<hesabın>.workers.dev
-```
-
-Alternatif: `server/server.mjs` kalıcı diski olan herhangi bir Node sunucusunda
-çalışır (aynı API). Adresi derleme sırasında verirsen kullanıcılar sunucu
-adresi yazmadan giriş yapar:
-
-```bash
-VITE_SYNC_SERVER=https://kasa.ornek.com npm run build
-```
 
 ---
 
@@ -71,7 +43,7 @@ VITE_SYNC_SERVER=https://kasa.ornek.com npm run build
 
 A personal web app (PWA) that tracks your habits, day plan, moments, journal,
 sleep, mood, vision board and identity across a journey with a real start and
-end date — and **collects no user data at all**.
+end date — and **never collects or sees your data**.
 
 ### Features
 
@@ -88,45 +60,15 @@ end date — and **collects no user data at all**.
 | **Identity** | "I am a person who…" statements |
 | **Themes** | 10 presets + a **60-30-10 theme builder**, contrast report, apply app-wide or **per section** |
 | **Backup** | JSON export/import (old Arbora backups supported) |
-| **Encrypted sync** | Optional; data is encrypted on your device with AES-256-GCM, the server can't read it |
+| **Account & sync** | Optional; automatic sync across devices with a username + password. Data is encrypted on your device with AES-256-GCM, the server can't read it |
 | **Accessibility** | Turkish/English, keyboard support, screen-reader labels, reduced motion, mobile tab bar |
 
 ### Privacy
 
-- No analytics, cookies, tracking or ads. Everything, fonts included, ships inside the app; no third-party server is contacted while it runs.
-- Data lives only in your browser's IndexedDB.
+- No analytics, cookies, tracking or ads. Everything, fonts included, ships inside the app.
+- Data lives in your browser's database (IndexedDB) on your device. With sync off, no server is ever contacted.
 - If sync is enabled, keys are derived from your username + password on your device; the server only stores an encrypted file it cannot read. There is no password reset. Details: the Privacy & KVKK page in the app.
-
-### Getting started
-
-```bash
-npm install
-npm run dev          # http://localhost:5173
-npm run test         # tests
-npm run build        # production build → dist/
-npm run sync-server  # (optional) encrypted vault server, :8787
-```
-
-**Account / sync server (recommended: Cloudflare Workers + R2, free):**
-
-```bash
-cd server/cloudflare
-npm install
-npx wrangler login     # sign in to Cloudflare in the browser
-npm run setup          # creates the R2 bucket (once)
-npm run deploy         # → https://arbora-vault.<your-account>.workers.dev
-```
-
-Alternatively `server/server.mjs` runs on any Node host with a persistent disk
-(same API). Bake the address in at build time so people sign in without typing
-a URL:
-
-```bash
-VITE_SYNC_SERVER=https://vault.example.com npm run build
-```
 
 ---
 
 React 18 · TypeScript · Vite · Dexie (IndexedDB) · Three.js · Vitest
-
-MIT License
