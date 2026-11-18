@@ -1,0 +1,23 @@
+.journey-screen {
+  min-height: 100%; display: grid; place-items: center; padding: 2rem 1rem;
+  background: radial-gradient(110% 80% at 50% 0%, var(--surface) 0%, var(--bg) 60%);
+}
+.journey-lang { position: fixed; top: 1rem; right: 1rem; }
+.journey-card { width: min(30rem, 100%); padding: 1.8rem 1.6rem; box-shadow: var(--shadow); }
+.journey-brand { display: flex; align-items: center; gap: .9rem; margin-bottom: .5rem; }
+.journey-brand .page-title { font-size: 1.9rem; }
+.journey-lead { margin-bottom: 1.4rem; }
+.duration-preview {
+  font-family: var(--font-mono); font-size: .78rem; color: var(--accent-ink-30);
+  padding: .55rem .75rem; background: var(--accent-soft); border-radius: var(--radius-sm); margin-bottom: 1rem;
+}
+.journey-begin { padding: .8rem; font-size: .95rem; margin-bottom: .4rem; }
+
+.setup { text-align: center; display: flex; flex-direction: column; gap: .6rem; align-items: center; }
+.setup-title { font-family: var(--font-display); font-size: 1.6rem; }
+.setup-thread { width: 14rem; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; position: relative; margin-bottom: .8rem; }
+.setup-thread::after {
+  content: ""; position: absolute; inset: 0; background: var(--accent);
+  transform-origin: left; animation: thread 1.8s ease forwards;
+}
+@keyframes thread { from { transform: scaleX(0); } to { transform: scaleX(1); } }

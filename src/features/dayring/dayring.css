@@ -1,0 +1,92 @@
+/* ── Day Ring: Gün Kadranı's dial, Arbora's tokens ── */
+.badge {
+  display: inline-block; margin-left: .35rem; padding: 0 .4rem; border-radius: 999px;
+  background: var(--accent-soft); font-size: .7rem; font-variant-numeric: tabular-nums;
+}
+.seg-control button[aria-pressed="true"] .badge { background: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+
+.date-nav { display: flex; align-items: center; gap: .45rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+.date-nav-pick { width: 12rem; }
+
+.dayring-cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(19rem, .85fr); gap: 2.4rem; align-items: start; }
+@media (max-width: 62rem) { .dayring-cols { grid-template-columns: 1fr; gap: 1.6rem; } }
+.dial-wrap { position: sticky; top: 1rem; }
+@media (max-width: 62rem) { .dial-wrap { position: static; max-width: 36rem; margin: 0 auto; width: 100%; } }
+
+svg.dial { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.ring-outer-bg { fill: color-mix(in srgb, var(--surface) 82%, var(--fg) 6%); }
+.ring-inner-bg { fill: color-mix(in srgb, var(--surface) 92%, var(--fg) 4%); }
+.ring-gap { fill: var(--bg); }
+.tick { stroke: var(--bg); stroke-width: 1.25; }
+.tick.major { stroke: var(--accent-ink); stroke-width: 1.4; opacity: .4; }
+.hourlabel { font-family: var(--font-mono); font-size: 11px; font-weight: 500; fill: var(--muted); text-anchor: middle; dominant-baseline: middle; }
+.hourlabel.quarter { fill: var(--accent-ink); font-weight: 600; }
+
+.seg { cursor: grab; outline: none; }
+.dial.is-dragging, .dial.is-dragging .seg { cursor: grabbing; }
+.seg-fill { transition: opacity .15s, filter .15s; }
+.seg:hover .seg-fill { opacity: .88; }
+.seg-outline { fill: none; stroke: var(--fg); stroke-width: 2.5; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.seg.is-hot .seg-outline, .seg:focus-visible .seg-outline { opacity: 1; }
+.seg.is-dragging .seg-fill { opacity: .75; }
+.seg.is-clash .seg-fill { filter: saturate(.3); opacity: .5; }
+.seg.is-clash .seg-outline { opacity: 1; stroke: var(--danger); stroke-dasharray: 5 4; }
+.seglabel { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; pointer-events: none; }
+
+.pin { cursor: grab; outline: none; }
+.pin-line { stroke-width: 3; stroke-linecap: round; }
+.pin-head { stroke: var(--bg); stroke-width: 2.5; transition: r .12s; }
+.pin.is-hot .pin-head, .pin:focus-visible .pin-head { stroke: var(--fg); }
+.pin-hit { stroke: transparent; stroke-width: 18; }
+
+.now-hand { stroke: var(--danger); stroke-width: 2.5; stroke-linecap: round; pointer-events: none; }
+.hub { fill: var(--surface); stroke: var(--border-strong); }
+.hubtime { font-family: var(--font-mono); font-weight: 600; font-size: 26px; fill: var(--accent-ink); text-anchor: middle; }
+.hubfree { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; fill: var(--muted); text-anchor: middle; }
+.hublabel { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .2em; fill: var(--muted); text-anchor: middle; }
+.hubrule { stroke: var(--border-strong); }
+.dialcap { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; fill: var(--muted); text-anchor: middle; }
+
+/* add form */
+.labelrow { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.txttoggle { display: flex; gap: 4px; }
+.txtbtn {
+  width: 1.6rem; height: 1.45rem; border: 1px solid var(--border-strong); padding: 0; position: relative;
+  font-size: .75rem; font-weight: 700; line-height: 1; border-radius: 5px;
+}
+.txtbtn.light { background: #FFFFFF; color: #000000; }
+.txtbtn.dark { background: #000000; color: #FFFFFF; }
+.txtbtn[aria-pressed="true"]::after { content: ""; position: absolute; inset: -4px; border: 2px solid var(--accent-ink-30); border-radius: 7px; }
+
+/* plan list */
+.group-label { font-family: var(--font-mono); font-size: .64rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-ink-30); margin: .8rem 0 .3rem; }
+.plan-list { list-style: none; }
+.plan-list li {
+  display: flex; align-items: center; gap: .7rem; padding: .45rem .5rem; border-radius: var(--radius-sm);
+  transition: background-color .12s;
+}
+.plan-list li.is-hot { background: var(--surface-sunken); }
+.chipbar { width: .6rem; height: 1.9rem; border-radius: 4px; flex-shrink: 0; }
+.li-main { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; background: none; border: 0; color: inherit; padding: 0; }
+.li-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.li-time { font-family: var(--font-mono); font-size: .72rem; color: var(--muted-30); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.del { border: 0; background: none; color: var(--muted-30); font-size: 1.2rem; line-height: 1; padding: .3rem .45rem; border-radius: var(--radius-xs); }
+.del:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.legend-foot {
+  display: flex; justify-content: space-between; gap: .6rem; flex-wrap: wrap;
+  border-top: 1px solid var(--border); margin-top: .8rem; padding-top: .7rem;
+  font-family: var(--font-mono); font-size: .72rem; color: var(--muted-30);
+}
+
+/* saved days */
+.savedhead { margin-bottom: 1.3rem; }
+.saved-title { font-family: var(--font-display); font-weight: 500; font-size: 1.7rem; }
+.savedgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: 1.6rem; }
+.daycard { text-align: center; }
+.daycard-dial { background: none; border: 0; padding: 0; width: 100%; border-radius: 50%; transition: transform .18s; }
+.daycard-dial:hover { transform: scale(1.03) rotate(-2deg); }
+.minidial { width: 100%; height: auto; display: block; }
+.dayname { font-family: var(--font-display); font-size: 1.1rem; margin: .6rem 0 .1rem; color: var(--accent-ink); word-break: break-word; }
+.daymeta { font-family: var(--font-mono); font-size: .68rem; color: var(--muted); }
+.rowbtns { display: flex; gap: .35rem; justify-content: center; margin-top: .6rem; flex-wrap: wrap; }
+.bigempty { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 2.6rem 1.4rem; text-align: center; color: var(--muted); }
