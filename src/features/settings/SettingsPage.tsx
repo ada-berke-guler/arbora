@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSetting, putSetting } from "../../db/schema";
-import { downloadJson, exportBackup, importBackup } from "../../db/backup";
+import { downloadJson, exportBackup } from "../../db/backup";
 import { backupNag, daysSince } from "../../lib/nag";
-import { isVaultId, newVaultId, open, pullVault, pushVault, seal, type Sealed } from "../../lib/vault";
+import { deleteAccount, getSession, signOut, syncNow, syncStore } from "../../lib/sync";
+import AccountForm, { syncErrorText } from "../../components/AccountForm";
 import { todayLocal } from "../../lib/dates";
 import { showToast } from "../../lib/undoBus";
 import { useI18n } from "../../i18n";
@@ -11,6 +12,7 @@ import { LangSwitch } from "../../components/Intro";
 import ImportBackup from "../../components/ImportBackup";
 import Icon from "../../components/Icons";
 import ThemeStudio from "./ThemeStudio";
+import { Link } from "react-router-dom";
 import "./settings.css";
 
 export default function SettingsPage() {
@@ -69,6 +71,7 @@ export default function SettingsPage() {
       <section className="panel settings-sec" id="s-privacy">
         <h2 className="sec-title">{t("settings.privacy")}</h2>
         <p className="privacy-text">{t("settings.privacyText")}</p>
+        <Link className="btn" to="/privacy">{t("privacy.open")}</Link>
       </section>
 
       <section className="panel settings-sec danger" id="s-danger">
@@ -105,67 +108,60 @@ function StorageInfo() {
 }
 
 function SyncPanel() {
-  const { t } = useI18n();
-  const cfg = useLiveQuery(async () => ({
-    server: (await getSetting<string>(db, "sync.server")) ?? "",
-    vault: (await getSetting<string>(db, "sync.vault")) ?? "",
-  }));
-  const [pass, setPass] = useState("");
+  const { t, locale } = useI18n();
+  const st = useSyncExternalStore(syncStore.subscribe, syncStore.get);
+  const session = useLiveQuery(async () => ({ v: await getSession(db) }));
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  if (!cfg) return null;
-  const ready = /^https?:\/\//.test(cfg.server) && isVaultId(cfg.vault) && pass.length >= 8;
+  if (!session) return null;
 
-  async function run(kind: "push" | "pull") {
-    if (!ready) return setErr(t("sync.needAll"));
-    setBusy(true);
-    setErr(null);
-    try {
-      if (kind === "push") {
-        const sealed: Sealed = await seal(JSON.stringify(await exportBackup(db)), pass);
-        await pushVault(cfg!.server, cfg!.vault, sealed);
-        showToast(t("sync.pushed"));
-      } else {
-        const sealed = await pullVault(cfg!.server, cfg!.vault);
-        const plain = await open(sealed, pass);
-        await importBackup(db, JSON.parse(plain));
-        showToast(t("sync.pulled"));
-      }
-    } catch (e) {
-      const m = e instanceof Error ? e.message : String(e);
-      setErr(m === "wrong-passphrase" ? t("sync.wrongPass") : m === "not-found" ? t("sync.notFound") : t("sync.failed", { msg: m }));
-    } finally {
-      setBusy(false);
-    }
+  if (!session.v) {
+    return (
+      <div>
+        <p className="muted small" style={{ marginTop: 0, marginBottom: "1rem" }}>{t("sync.lead")}</p>
+        <AccountForm initialMode="create" />
+      </div>
+    );
   }
 
+  const last = st.lastAt ? new Date(st.lastAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : null;
   return (
     <div>
-      <p className="muted small" style={{ marginTop: 0, marginBottom: "1rem" }}>{t("sync.lead")}</p>
-      <label className="field">
-        <span>{t("sync.server")}</span>
-        <input value={cfg.server} placeholder={t("sync.serverPh")} inputMode="url" autoComplete="off"
-          onChange={(e) => void putSetting(db, "sync.server", e.target.value.trim())} />
-      </label>
-      <div className="field">
-        <span>{t("sync.vault")}</span>
-        <div className="row" style={{ flexWrap: "nowrap" }}>
-          <input className="input mono" value={cfg.vault} autoComplete="off" spellCheck={false}
-            onChange={(e) => void putSetting(db, "sync.vault", e.target.value.trim().toLowerCase())} />
-          <button className="btn btn-small" onClick={() => void putSetting(db, "sync.vault", newVaultId())}>{t("sync.newVault")}</button>
-          <button className="btn btn-small" disabled={!cfg.vault} onClick={() => void navigator.clipboard?.writeText(cfg.vault)}>{t("sync.copyId")}</button>
-        </div>
-      </div>
-      <label className="field">
-        <span>{t("sync.pass")}</span>
-        <input type="password" value={pass} autoComplete="new-password" onChange={(e) => setPass(e.target.value)} />
-      </label>
-      <p className="muted small" style={{ marginTop: "-.4rem" }}>{t("sync.passHint")}</p>
+      <p className="status-ok" style={{ marginTop: 0 }}>{t("sync.signedInAs", { name: session.v.username })}</p>
+      <p className="muted small" role="status">
+        {st.phase === "syncing" ? t("sync.working")
+          : st.phase === "error" ? syncErrorText(t, st.error ?? "")
+          : last ? t("sync.lastAt", { when: last }) : t("sync.auto")}
+      </p>
+      <p className="muted small">{t("sync.autoHint")}</p>
       {err && <p className="msg" role="alert">{err}</p>}
       <div className="row" style={{ marginTop: ".9rem" }}>
-        <button className="btn btn-primary" disabled={busy} onClick={() => void run("push")}><Icon name="upload" size={16} />{t("sync.push")}</button>
-        <button className="btn" disabled={busy} onClick={() => void run("pull")}><Icon name="download" size={16} />{t("sync.pull")}</button>
+        <button className="btn btn-primary" disabled={st.phase === "syncing"} onClick={() => void syncNow(db)}>{t("sync.now")}</button>
+        <button className="btn" onClick={() => void signOut(db).then(() => showToast(t("sync.signedOut")))}>{t("sync.signOut")}</button>
+        <span className="spacer" />
+        {confirmDelete ? (
+          <>
+            <button className="btn btn-danger" disabled={busy} onClick={async () => {
+              setBusy(true);
+              setErr(null);
+              try {
+                await deleteAccount(db);
+                showToast(t("sync.deleted"));
+              } catch (e) {
+                setErr(syncErrorText(t, e instanceof Error ? e.message : String(e)));
+              } finally {
+                setBusy(false);
+                setConfirmDelete(false);
+              }
+            }}>{busy ? t("sync.working") : t("sync.deleteConfirm")}</button>
+            <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>{t("common.cancel")}</button>
+          </>
+        ) : (
+          <button className="btn btn-ghost" onClick={() => setConfirmDelete(true)}>{t("sync.delete")}</button>
+        )}
       </div>
+      <p className="muted small">{t("sync.signOutHint")}</p>
       <p className="muted small mono">{t("sync.serverNote")}</p>
     </div>
   );

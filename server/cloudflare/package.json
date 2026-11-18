@@ -1,0 +1,13 @@
+{
+  "name": "arbora-vault-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "wrangler r2 bucket create arbora-vaults",
+    "dev": "wrangler dev --port 8788",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.164.0"
+  }
+}

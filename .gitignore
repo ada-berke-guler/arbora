@@ -3,3 +3,5 @@ dist
 server/data
 *.log
 CLAUDE.md
+server/cloudflare/node_modules
+server/cloudflare/.wrangler

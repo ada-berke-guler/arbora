@@ -130,10 +130,26 @@ herkes için (mobil, klavye, ekran okuyucu, iki dil) kullanılabilir hale getiri
 - 7 günden eski yedek için hatırlatma.
 
 ### 3.16 Şifreli eşitleme (opsiyonel)
-- Ayarlar'da sunucu adresi + kasa kimliği + parola. "Gönder" yerel veriyi
-  şifreleyip yükler, "Al" indirip çözer ve içe aktarır.
-- Sunucu (`server/`): bağımlılıksız Node; yalnızca `PUT/GET /vault/:id`
-  ile şifreli blob saklar. Log tutmaz, IP saklamaz.
+- Ayarlar'da sunucu adresi + kullanıcı adı + parola ("hesap gibi", ama hesap
+  yok). Cihazda PBKDF2 (600k) + HKDF ile kasa kimliği, erişim anahtarı ve
+  AES-GCM anahtarı türetilir; kullanıcı adı/parola sunucuya gitmez.
+  "Hesap oluştur" / "Giriş yap" (ilk ekranda da: "Hesabım var — giriş yap").
+  Oturum cihazda kalır (türetilmiş anahtarlar, parola asla), `sync.*`
+  ayarları cihaza özeldir: dışa aktarılmaz, içe aktarma/eşitleme ezmez.
+- Otomatik eşitleme (`lib/sync.ts`): açılışta, değişiklikten ~4 sn sonra,
+  uygulama gizlenince, çevrimiçi olunca ve 5 dk'da bir. Çek → birleştir
+  (`mergeBackup`: satır bazında yeni `updatedAt` kazanır, hiçbir şey düşmez;
+  `moodEntries.date` ve `habitLogs[habitId+date]` doğal anahtar çakışmasında
+  yeni olan kalır) → `If-Match` ile gönder; 412 ise tekrar.
+- Sunucu adresi derlemede `VITE_SYNC_SERVER` ile verilir; boşsa kullanıcı girer.
+- Üretim sunucusu: `server/cloudflare` (Workers + R2, aynı API; token özeti R2
+  nesne metadata'sında, `If-Match` R2 `onlyIf.etagMatches` ile atomik).
+  `VAULT_SERVER=… npm test` aynı testleri ona karşı çalıştırır.
+- Sunucu (`server/`): bağımlılıksız Node; `PUT/GET/DELETE /vault/:id` (ETag + `If-Match`/`If-None-Match`),
+  hepsi `Authorization: Bearer <token>` ister. İlk yükleme token'ın SHA-256'sını
+  kaydeder; sonrası sabit zamanlı karşılaştırma. Log tutmaz, IP saklamaz.
+- Şifre sıfırlama YOK (tasarım gereği). Bu, ilk açılıştaki gizlilik slaydında,
+  eşitleme panelinde ve Gizlilik/KVKK sayfasında (`/privacy`) açıkça yazar.
 
 ## 4. Gezinme ve düzen
 - Masaüstü: sol kenar çubuğu (logo + ağaç, yolculuk, arama, modüller, ayarlar).
@@ -154,4 +170,4 @@ herkes için (mobil, klavye, ekran okuyucu, iki dil) kullanılabilir hale getiri
 - Çalışma anında dış ağ isteği yok (eşitleme açılmadıkça).
 
 ## 7. Kapsam dışı (v2)
-- Hesap sistemi, bildirimler, sosyal paylaşım, gerçek zamanlı çakışma çözümlü sync.
+- Sunucu taraflı hesap sistemi (e-posta, şifre sıfırlama), bildirimler, sosyal paylaşım, gerçek zamanlı (canlı) sync.

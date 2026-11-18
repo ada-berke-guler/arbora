@@ -89,3 +89,12 @@
 .contact-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.1rem; max-width: 36rem; }
 .contact-email { font-family: var(--font-display); font-size: 1.35rem; color: var(--accent-ink-30); text-decoration: none; word-break: break-all; flex: 1; }
 .contact-email:hover { text-decoration: underline; }
+
+/* privacy / KVKK notice */
+.privacy-panel { max-width: 46rem; }
+.privacy-notice h3 { font-family: var(--font-display); font-size: 1.05rem; margin: 1.2rem 0 .35rem; color: var(--fg-30); }
+.privacy-notice p { margin: 0 0 .5rem; line-height: 1.6; color: var(--fg-30); }
+.privacy-notice .privacy-alert { border: 1px solid var(--accent); border-radius: .6rem; padding: .75rem .9rem; color: var(--fg-30); }
+.privacy-notice .muted { color: var(--muted-30); }
+.intro-privacy-link { margin-top: .9rem; }
+.privacy-modal-body { max-height: 65vh; overflow-y: auto; }

@@ -1,5 +1,5 @@
 import { newRow, nowIso, putSetting, type ArboraDB } from "./schema";
-import type { BlobRow, BoardItem, RingTask } from "./types";
+import type { BaseRow, BlobRow, BoardItem, RingTask, Setting } from "./types";
 
 export const BACKUP_APP = "arbora";
 export const BACKUP_VERSION = 2;
@@ -34,8 +34,13 @@ export interface BackupFile {
 
 type SerializedBlob = Omit<BlobRow, "data"> & { data: string };
 
-/** Settings that describe THIS device, not the person's data — never carried across. */
-const DEVICE_ONLY_SETTINGS = new Set(["sync.password"]);
+/**
+ * Settings that describe THIS device, not the person's data — never exported,
+ * never overwritten by an import or a sync (the sync session lives here).
+ */
+export function isDeviceOnlySetting(key: string): boolean {
+  return key.startsWith("sync.");
+}
 
 export async function exportBackup(d: ArboraDB): Promise<BackupFile> {
   await putSetting(d, "lastBackupAt", nowIso()); // stamped first so it's inside the snapshot
@@ -43,7 +48,7 @@ export async function exportBackup(d: ArboraDB): Promise<BackupFile> {
   for (const t of TABLES) {
     const rows = await d.table(t).toArray();
     if (t === "blobs") data[t] = (rows as BlobRow[]).map((r) => ({ ...r, data: bufToB64(r.data) }));
-    else if (t === "settings") data[t] = rows.filter((r: { key: string }) => !DEVICE_ONLY_SETTINGS.has(r.key));
+    else if (t === "settings") data[t] = rows.filter((r: { key: string }) => !isDeviceOnlySetting(r.key));
     else data[t] = rows;
   }
   return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: nowIso(), data };
@@ -75,12 +80,65 @@ export async function importBackup(d: ArboraDB, raw: unknown): Promise<void> {
   const tables = TABLES.map((t) => d.table(t));
   await d.transaction("rw", tables, async () => {
     for (const t of TABLES) {
-      await d.table(t).clear();
       let rows = backup.data[t];
+      if (t === "settings") {
+        const drop = (await d.settings.toCollection().primaryKeys()).filter((k) => !isDeviceOnlySetting(k));
+        await d.settings.bulkDelete(drop);
+        rows = (rows as Setting[]).filter((r) => !isDeviceOnlySetting(r.key));
+      } else {
+        await d.table(t).clear();
+      }
       if (t === "blobs") rows = (rows as SerializedBlob[]).map((r) => ({ ...r, data: b64ToBuf(r.data) }));
       if (rows.length > 0) await d.table(t).bulkPut(rows);
     }
   });
+}
+
+/* Rows whose natural key is unique across ids: two devices can each create
+ * "the mood for 2026-11-18" with different ids. The newer one wins. */
+const NATURAL_KEYS: Partial<Record<TableName, { index: string; of: (r: Record<string, unknown>) => unknown }>> = {
+  moodEntries: { index: "date", of: (r) => r.date },
+  habitLogs: { index: "[habitId+date]", of: (r) => [r.habitId, r.date] },
+};
+
+/**
+ * Sync merge: union of both sides, per row the newer `updatedAt` wins (soft
+ * deletes travel as rows with `deletedAt`). Never removes anything the
+ * other side doesn't know about. Returns how many local rows changed.
+ */
+export async function mergeBackup(d: ArboraDB, raw: unknown): Promise<number> {
+  const backup = normalizeBackup(raw);
+  const tables = TABLES.map((t) => d.table(t));
+  let changed = 0;
+  await d.transaction("rw", tables, async () => {
+    for (const t of TABLES) {
+      const table = d.table(t);
+      for (const incoming of backup.data[t] as Record<string, unknown>[]) {
+        let r = incoming;
+        if (t === "settings") {
+          const key = r.key as string;
+          if (isDeviceOnlySetting(key)) continue;
+          const local = (await table.get(key)) as Setting | undefined;
+          if (local && (local.updatedAt ?? "") >= ((r.updatedAt as string) ?? "")) continue;
+        } else {
+          const local = (await table.get(r.id as string)) as BaseRow | undefined;
+          if (local && local.updatedAt >= (r.updatedAt as string)) continue;
+          const nk = NATURAL_KEYS[t];
+          if (nk) {
+            const clash = (await table.where(nk.index).equals(nk.of(r) as never).first()) as BaseRow | undefined;
+            if (clash && clash.id !== r.id) {
+              if (clash.updatedAt >= (r.updatedAt as string)) continue;
+              await table.delete(clash.id);
+            }
+          }
+          if (t === "blobs") r = { ...r, data: b64ToBuf(r.data as string) };
+        }
+        await table.put(r);
+        changed++;
+      }
+    }
+  });
+  return changed;
 }
 
 export function normalizeBackup(raw: unknown): BackupFile {

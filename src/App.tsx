@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { startAutoSync } from "./lib/sync";
 import { createHashRouter, Navigate, RouterProvider } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSetting } from "./db/schema";
@@ -18,6 +19,7 @@ import BoardPage from "./features/board/BoardPage";
 import IdentityPage from "./features/identity/IdentityPage";
 import ContactPage from "./features/contact/ContactPage";
 import SettingsPage from "./features/settings/SettingsPage";
+import PrivacyPage from "./features/privacy/PrivacyPage";
 
 /* Hash router: works from any static host or straight from disk. */
 export const routes = [
@@ -34,6 +36,7 @@ export const routes = [
       { path: "/identity", element: <IdentityPage /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/settings", element: <SettingsPage /> },
+      { path: "/privacy", element: <PrivacyPage /> },
       { path: "*", element: <Navigate to="/habits" replace /> },
     ],
   },
@@ -56,6 +59,8 @@ export default function App() {
     introBefore: (await getSetting<boolean>(db, "hasCompletedIntroBefore")) ?? false,
     lang: (await getSetting<Lang>(db, "lang")) ?? detectLang(),
   }));
+
+  useEffect(() => startAutoSync(db), []);
 
   useEffect(() => {
     if (state) document.documentElement.lang = state.lang;

@@ -148,3 +148,24 @@ describe("backup restore from onboarding", () => {
     expect(await screen.findByRole("dialog", { name: "Yedeği içe aktar…" })).toBeTruthy();
   });
 });
+
+describe("account sync UI", () => {
+  it("first run offers 'I have an account' with the no-reset warning", async () => {
+    await putSetting(db, "lang", "tr");
+    await putSetting(db, "introSeen", true);
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Hesabım var — giriş yap" }));
+    const dialog = await screen.findByRole("dialog", { name: "Hesabım var — giriş yap" });
+    expect(within(dialog).getByLabelText("Kullanıcı adı")).toBeTruthy();
+    expect(within(dialog).getByText("Şifre sıfırlama yok.")).toBeTruthy();
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "Giriş yap" }).at(-1)!);
+    expect(await within(dialog).findByRole("alert")).toBeTruthy(); // empty form → validation message
+  });
+
+  it("settings shows the create-account form and links the KVKK page", async () => {
+    await seedApp("/settings");
+    render(<App />);
+    expect(await screen.findByRole("button", { name: "Hesap oluştur", pressed: true })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Gizlilik ve KVKK metnini oku" }).getAttribute("href")).toBe("#/privacy");
+  });
+});

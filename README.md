@@ -35,7 +35,7 @@ günlüğünü, uykunu, ruh halini, vision board'unu ve kim olduğunu takip eden
 
 - Analitik, çerez, takip veya reklam yok. Yazı tipleri dahil her şey uygulamanın içinde; çalışırken hiçbir üçüncü taraf sunucuya istek atılmaz.
 - Veriler yalnızca tarayıcının IndexedDB veritabanında durur.
-- Eşitleme açılırsa anahtar paroladan cihazda türetilir; sunucu yalnızca okuyamadığı şifreli bir dosya saklar.
+- Eşitleme açılırsa kullanıcı adı + paroladan cihazda anahtar türetilir; sunucu yalnızca okuyamadığı şifreli bir dosya saklar. Şifre sıfırlama yoktur. Ayrıntılar: uygulamadaki Gizlilik ve KVKK sayfası.
 
 ### Çalıştırma
 
@@ -45,6 +45,24 @@ npm run dev          # http://localhost:5173
 npm run test         # testler
 npm run build        # üretim derlemesi → dist/
 npm run sync-server  # (isteğe bağlı) şifreli kasa sunucusu, :8787
+```
+
+**Hesap / eşitleme sunucusu (önerilen: Cloudflare Workers + R2, ücretsiz):**
+
+```bash
+cd server/cloudflare
+npm install
+npx wrangler login     # tarayıcıda Cloudflare hesabınla giriş
+npm run setup          # R2 kovasını oluşturur (bir kez)
+npm run deploy         # → https://arbora-vault.<hesabın>.workers.dev
+```
+
+Alternatif: `server/server.mjs` kalıcı diski olan herhangi bir Node sunucusunda
+çalışır (aynı API). Adresi derleme sırasında verirsen kullanıcılar sunucu
+adresi yazmadan giriş yapar:
+
+```bash
+VITE_SYNC_SERVER=https://kasa.ornek.com npm run build
 ```
 
 ---
@@ -77,7 +95,7 @@ end date — and **collects no user data at all**.
 
 - No analytics, cookies, tracking or ads. Everything, fonts included, ships inside the app; no third-party server is contacted while it runs.
 - Data lives only in your browser's IndexedDB.
-- If sync is enabled, the key is derived from your passphrase on your device; the server only stores an encrypted file it cannot read.
+- If sync is enabled, keys are derived from your username + password on your device; the server only stores an encrypted file it cannot read. There is no password reset. Details: the Privacy & KVKK page in the app.
 
 ### Getting started
 
@@ -87,6 +105,24 @@ npm run dev          # http://localhost:5173
 npm run test         # tests
 npm run build        # production build → dist/
 npm run sync-server  # (optional) encrypted vault server, :8787
+```
+
+**Account / sync server (recommended: Cloudflare Workers + R2, free):**
+
+```bash
+cd server/cloudflare
+npm install
+npx wrangler login     # sign in to Cloudflare in the browser
+npm run setup          # creates the R2 bucket (once)
+npm run deploy         # → https://arbora-vault.<your-account>.workers.dev
+```
+
+Alternatively `server/server.mjs` runs on any Node host with a persistent disk
+(same API). Bake the address in at build time so people sign in without typing
+a URL:
+
+```bash
+VITE_SYNC_SERVER=https://vault.example.com npm run build
 ```
 
 ---

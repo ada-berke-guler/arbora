@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { db, putSetting } from "../db/schema";
 import { useI18n, type DictKey, type Lang } from "../i18n";
 import Tree from "./tree/Tree";
+import Modal from "./Modal";
+import { PrivacyNotice } from "../features/privacy/PrivacyPage";
 import "./intro.css";
 
 export const LOGO_SEC = 4.2;
@@ -35,6 +37,7 @@ export default function Intro({ isReplay = false, initialPhase = "logo" }: { isR
   const [phase, setPhase] = useState<"logo" | "slides">(initialPhase);
   const [grown, setGrown] = useState(false);
   const [idx, setIdx] = useState(0);
+  const [showNotice, setShowNotice] = useState(false);
 
   function finish() {
     void putSetting(db, "introSeen", true);
@@ -50,6 +53,7 @@ export default function Intro({ isReplay = false, initialPhase = "logo" }: { isR
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (showNotice) return;
       if (phase === "logo") {
         if (e.key === "Enter" || e.key === " " || e.key === "Escape") afterLogo();
         return;
@@ -61,7 +65,7 @@ export default function Intro({ isReplay = false, initialPhase = "logo" }: { isR
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, idx]);
+  }, [phase, idx, showNotice]);
 
   const slide = SLIDES[idx];
 
@@ -99,6 +103,9 @@ export default function Intro({ isReplay = false, initialPhase = "logo" }: { isR
             <div className="intro-art">{slide.art}</div>
             <h2 className="intro-slide-title">{t(slide.title)}</h2>
             <p className="intro-caption">{t(slide.caption)}</p>
+            {slide.id === "privacy" && (
+              <button className="btn btn-small intro-privacy-link" onClick={() => setShowNotice(true)}>{t("privacy.open")}</button>
+            )}
           </div>
           <div className="intro-controls">
             <div className="intro-dots" role="tablist" aria-label={t("intro.slides")}>
@@ -113,6 +120,11 @@ export default function Intro({ isReplay = false, initialPhase = "logo" }: { isR
             </button>
           </div>
         </div>
+      )}
+      {showNotice && (
+        <Modal title={t("privacy.title")} label={t("privacy.title")} onClose={() => setShowNotice(false)} wide>
+          <div className="privacy-modal-body"><PrivacyNotice /></div>
+        </Modal>
       )}
     </div>
   );

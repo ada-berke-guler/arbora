@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useI18n } from "../../i18n";
 import "../pages.css";
 
@@ -30,6 +31,7 @@ export default function ContactPage() {
         <button className="btn btn-small" onClick={() => void copy()}>{copied ? t("contact.copied") : t("contact.copy")}</button>
       </div>
       <p className="muted">{t("contact.hint")}</p>
+      <p className="muted small">{t("contact.privacy")} <Link to="/privacy">{t("privacy.title")}</Link></p>
     </div>
   );
 }

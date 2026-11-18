@@ -1,0 +1,14 @@
+# Arbora encrypted-vault server on Cloudflare Workers + R2.
+# Deploy:  npm install && npx wrangler login && npm run setup && npm run deploy
+name = "arbora-vault"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "VAULTS"
+bucket_name = "arbora-vaults"
+
+# Zero-knowledge promise: no request logs kept by the Worker.
+[observability]
+enabled = false

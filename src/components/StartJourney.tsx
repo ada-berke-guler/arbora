@@ -7,6 +7,8 @@ import { DatePicker } from "./Pickers";
 import Tree from "./tree/Tree";
 import { LangSwitch } from "./Intro";
 import ImportBackup from "./ImportBackup";
+import Modal from "./Modal";
+import AccountForm from "./AccountForm";
 import "./journey.css";
 
 export const SETUP_MS = 1800;
@@ -25,6 +27,7 @@ export default function StartJourney() {
   const [endDate, setEndDate] = useState(() => journeyEndDate(today, DEFAULT_JOURNEY_DAYS));
   const [phase, setPhase] = useState<"form" | "setup">("form");
   const [importing, setImporting] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const span = journeySpan(startDate, endDate);
 
   function onStart(d: string) {
@@ -81,9 +84,15 @@ export default function StartJourney() {
         </div>
         <p className="duration-preview" role="status">{t("journey.span", span)}</p>
         <button className="btn btn-primary btn-block journey-begin" onClick={begin}>{t("journey.begin")}</button>
+        <button className="btn btn-ghost btn-block" onClick={() => setSigningIn(true)}>{t("journey.signIn")}</button>
         <button className="btn btn-ghost btn-block" onClick={() => setImporting(true)}>{t("journey.importInstead")}</button>
       </div>
       {importing && <ImportBackup onClose={() => setImporting(false)} />}
+      {signingIn && (
+        <Modal title={t("journey.signIn")} label={t("journey.signIn")} onClose={() => setSigningIn(false)}>
+          <AccountForm initialMode="login" onDone={() => setSigningIn(false)} />
+        </Modal>
+      )}
     </div>
   );
 }
