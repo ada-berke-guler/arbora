@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { db } from "../db/schema";
 import { connect, DEFAULT_SYNC_SERVER, getServer } from "../lib/sync";
 import { isValidUsername, MIN_PASSWORD } from "../lib/vault";
+import { weakPassword } from "../lib/passwordCheck";
 import { showToast } from "../lib/undoBus";
 import { useI18n } from "../i18n";
 
@@ -24,6 +25,7 @@ export default function AccountForm({ initialMode = "login", onDone }: { initial
   const [username, setUsername] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -39,9 +41,14 @@ export default function AccountForm({ initialMode = "login", onDone }: { initial
       return setErr(t("sync.needAll", { n: MIN_PASSWORD }));
     }
     if (mode === "create" && pass !== pass2) return setErr(t("sync.mismatch"));
+    if (mode === "create" && !consent) return setErr(t("sync.needConsent"));
     setBusy(true);
     setErr(null);
     try {
+      if (mode === "create") {
+        const weak = await weakPassword(pass, username);
+        if (weak) return setErr(t(`sync.weak.${weak}`));
+      }
       await connect(db, srv, username, pass, mode);
       showToast(t(mode === "create" ? "sync.created" : "sync.signedIn"));
       setPass("");
@@ -76,6 +83,12 @@ export default function AccountForm({ initialMode = "login", onDone }: { initial
         </label>
       )}
       <p className="muted small" style={{ marginTop: "-.4rem" }}>{t("sync.passHint", { n: MIN_PASSWORD })}</p>
+      {mode === "create" && (
+        <label className="check-row small">
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          <span>{t("sync.consent")} <a href="#/privacy">{t("privacy.title")}</a></span>
+        </label>
+      )}
       {advanced ? (
         <label className="field">
           <span>{t("sync.server")}</span>

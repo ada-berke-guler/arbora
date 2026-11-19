@@ -3,7 +3,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSetting, putSetting } from "../../db/schema";
 import { downloadJson, exportBackup } from "../../db/backup";
 import { backupNag, daysSince } from "../../lib/nag";
-import { deleteAccount, getSession, signOut, syncNow, syncStore } from "../../lib/sync";
+import { deleteAccount, getSession, signOut, signOutAndErase, syncNow, syncStore } from "../../lib/sync";
 import AccountForm, { syncErrorText } from "../../components/AccountForm";
 import { todayLocal } from "../../lib/dates";
 import { showToast } from "../../lib/undoBus";
@@ -112,6 +112,7 @@ function SyncPanel() {
   const st = useSyncExternalStore(syncStore.subscribe, syncStore.get);
   const session = useLiveQuery(async () => ({ v: await getSession(db) }));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [erase, setErase] = useState<"idle" | "confirm" | "failed">("idle");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   if (!session) return null;
@@ -139,6 +140,28 @@ function SyncPanel() {
       <div className="row" style={{ marginTop: ".9rem" }}>
         <button className="btn btn-primary" disabled={st.phase === "syncing"} onClick={() => void syncNow(db)}>{t("sync.now")}</button>
         <button className="btn" onClick={() => void signOut(db).then(() => showToast(t("sync.signedOut")))}>{t("sync.signOut")}</button>
+        <span className="spacer" />
+      </div>
+      <div className="row" style={{ marginTop: ".6rem" }}>
+        {erase === "idle" ? (
+          <button className="btn" onClick={() => setErase("confirm")}>{t("sync.signOutErase")}</button>
+        ) : (
+          <>
+            <button className="btn btn-danger" disabled={busy} onClick={async () => {
+              setBusy(true);
+              setErr(null);
+              try {
+                await signOutAndErase(db, erase === "failed");
+                window.location.reload();
+              } catch (e) {
+                setErr(t("sync.eraseFailed", { msg: syncErrorText(t, e instanceof Error ? e.message : String(e)) }));
+                setErase("failed");
+                setBusy(false);
+              }
+            }}>{busy ? t("sync.working") : t(erase === "failed" ? "sync.eraseAnyway" : "sync.signOutEraseConfirm")}</button>
+            <button className="btn btn-ghost" onClick={() => { setErase("idle"); setErr(null); }}>{t("common.cancel")}</button>
+          </>
+        )}
         <span className="spacer" />
         {confirmDelete ? (
           <>

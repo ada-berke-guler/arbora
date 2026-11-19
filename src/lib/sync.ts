@@ -151,6 +151,26 @@ export async function signOut(d: ArboraDB): Promise<void> {
   set({ phase: "off", username: null, lastAt: null, error: null });
 }
 
+/**
+ * For shared devices: upload the latest changes, then erase EVERYTHING from
+ * this device (database + local cache). The server copy stays, so signing in
+ * again brings it all back. Throws (and erases nothing) if the upload fails,
+ * unless `force` — then unsynced edits on this device are lost.
+ */
+export async function signOutAndErase(d: ArboraDB, force = false): Promise<void> {
+  if (running) await running.catch(() => undefined);
+  const session = await getSession(d);
+  const server = await getServer(d);
+  if (session && server && !force) await syncOnce(d, server, session);
+  set({ phase: "off", username: null, lastAt: null, error: null });
+  await d.delete();
+  try {
+    localStorage.clear();
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Permanently erase the vault from the server, then sign out. */
 export async function deleteAccount(d: ArboraDB): Promise<void> {
   const session = await getSession(d);

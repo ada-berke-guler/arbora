@@ -86,6 +86,9 @@ export default function StartJourney() {
         <button className="btn btn-primary btn-block journey-begin" onClick={begin}>{t("journey.begin")}</button>
         <button className="btn btn-ghost btn-block" onClick={() => setSigningIn(true)}>{t("journey.signIn")}</button>
         <button className="btn btn-ghost btn-block" onClick={() => setImporting(true)}>{t("journey.importInstead")}</button>
+        <p className="muted small" style={{ marginBottom: 0 }}>
+          {t("journey.noAccount")} <a href="#/privacy">{t("privacy.title")}</a>
+        </p>
       </div>
       {importing && <ImportBackup onClose={() => setImporting(false)} />}
       {signingIn && (

@@ -167,5 +167,13 @@ describe("account sync UI", () => {
     render(<App />);
     expect(await screen.findByRole("button", { name: "Hesap oluştur", pressed: true })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Gizlilik ve KVKK metnini oku" }).getAttribute("href")).toBe("#/privacy");
+    // creating an account needs explicit consent (storage abroad, KVKK m.9)
+    const box = screen.getByRole("checkbox", { name: /yurt dışında/ }) as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    fireEvent.change(screen.getByLabelText("Kullanıcı adı"), { target: { value: "ada" } });
+    fireEvent.change(screen.getByLabelText("Parola"), { target: { value: "kedi-pencere-limon-7" } });
+    fireEvent.change(screen.getByLabelText("Parola (tekrar — yalnızca gönderirken)"), { target: { value: "kedi-pencere-limon-7" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Hesap oluştur" }).at(-1)!);
+    expect((await screen.findByRole("alert")).textContent).toContain("onay kutusunu");
   });
 });

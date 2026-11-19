@@ -11,6 +11,8 @@ const SECTIONS: [DictKey, DictKey][] = [
   ["privacy.s6.t", "privacy.s6.b"],
   ["privacy.s7.t", "privacy.s7.b"],
   ["privacy.s8.t", "privacy.s8.b"],
+  ["privacy.s9.t", "privacy.s9.b"],
+  ["privacy.s10.t", "privacy.s10.b"],
 ];
 
 /** KVKK / GDPR notice. Shared by the /privacy page and the first-run dialog. */
